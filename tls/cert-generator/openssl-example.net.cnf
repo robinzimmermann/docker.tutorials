@@ -1,0 +1,4 @@
+[ alt_names ]
+DNS.1 = gateway.example.net
+DNS.2 = *.gateway.example.net
+#DNS.3 = ...
