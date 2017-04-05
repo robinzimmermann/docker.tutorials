@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<gateway-config xmlns="http://xmlns.kaazing.org/2016/06/gateway">
+
+
+  <service>
+    <name>welcome-directory</name>
+    <description>Directory service for welcome page</description>
+    <accept>http://example.com/web</accept>
+    <accept>https://example.com/web</accept>
+
+    <type>directory</type>
+
+    <properties>
+      <directory>/welcome</directory>
+      <welcome-file>index.html</welcome-file>
+      <error-pages-directory>/error-pages</error-pages-directory>
+      <options>indexes</options>
+      <location>
+        <patterns>**/*</patterns>
+        <cache-control>max-age=0</cache-control>
+      </location>
+    </properties>
+
+    <accept-options>
+      <http.transport>tcp://@eth0:80</http.transport>
+    </accept-options>
+
+  </service>
+
+
+  <service>
+
+    <name>Echo</name>
+    <description>A service that echoes messages back for ws</description>
+
+    <accept>ws://example.com:80/echo</accept>
+    <accept>wss://example.com:443/echo</accept>
+
+    <type>echo</type>
+
+    <accept-options>
+      <http.transport>tcp://@eth0:80</http.transport>
+    </accept-options>
+
+    <cross-site-constraint>
+      <allow-origin>*</allow-origin>
+    </cross-site-constraint>
+
+  </service>
+
+
+</gateway-config>
