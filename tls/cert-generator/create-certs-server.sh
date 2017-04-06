@@ -2,16 +2,22 @@
 
 OUTPUT_DIR=/x509
 
-# ROOT_CA_NAME=root-ca
-# ROOT_PW=rootpass
-# SIGNING_CA_NAME=signing-ca
-# SIGNING_PW=signingpass
-# DAYS=1
+SERVER_HOSTNAME=example.com
 
-EXAMPLECOM_SUBDOMAIN=example
-EXAMPLECOM_KEY=certs/example.com.key
-EXAMPLECOM_CSR=certs/example.com.csr
-EXAMPLECOM_CERT=certs/example.com.crt
+ROOT_CA_NAME=root-ca
+ROOT_PW=rootpass
+ROOT_SUBJECT="/C=US/ST=California/O=Kaazing/OU=Kaazing Demo Certificate Authority/CN=Kaazing Demo Root CA"
+
+SIGNING_CA_NAME=signing-ca
+SIGNING_PW=signingpass
+SIGNING_SUBJECT="/C=US/ST=California/O=Kaazing/OU=Kaazing Demo Certificate Authority/CN=Kaazing Demo Signing CA"
+
+DAYS=1
+
+SERVER_KEY=certs/${SERVER_HOSTNAME}.key
+SERVER_CSR=certs/${SERVER_HOSTNAME}.csr
+SERVER_CERT=certs/${SERVER_HOSTNAME}.crt
+SERVER_SUBJECT="/C=US/ST=California/O=Kaazing/OU=Kaazing Demo/CN=*.${SERVER_HOSTNAME}"
 
 # Save the args, minus the command.
 ARGS=("$@")
@@ -23,17 +29,23 @@ function usage()
   echo ""
   echo "    --root-ca              The name of the root CA"
   echo "    --root-ca-password     Password for the root CA"
+  echo "    --root-ca-subject      The subject DN of the root CA certificate"
   echo "    --signing-ca           The name of the signing CA"
   echo "    --signing-ca-password  Password for the signing CA"
+  echo "    --signing-ca-subject   The subject DN of the signing CA certificate"
   echo "    --days                 Number of days the CAs are valid for"
+  echo "    --server-cert-subject  The subject DN of the server certificate"
   echo ""
   echo "  Example:"
   echo ""
   echo "    --root-ca              root-ca"
   echo "    --root-ca-password     rootpass"
+  echo "    --root-ca-subject      \"/C=US/ST=California/O=Kaazing/OU=Kaazing Demo Certificate Authority/CN=Kaazing Demo Root CA\""
   echo "    --signing-ca           signing-ca"
   echo "    --signing-ca-password  signingpass"
+  echo "    --signing-ca-subject   \"/C=US/ST=California/O=Kaazing/OU=Kaazing Demo Certificate Authority/CN=Kaazing Demo Signing CA\""
   echo "    --days                 1"
+  echo "    --server-ca-subject    \"/C=US/ST=California/O=Kaazing/OU=Kaazing Demo/CN=*.example.com\""
 }
 
 # Check if a variable is present, and error if it is not.
@@ -54,8 +66,8 @@ function process_args
 
   local n=${#ARGS[@]}
 
-  if (( ${n} > 0 ))
-  then
+  # if (( ${n} > 0 ))
+  # then
 
     i=$((0))
     while [ ${i} -lt ${n} ];
@@ -73,14 +85,23 @@ function process_args
         --root-ca-password)
           i=$((i+1)); ROOT_PW=${ARGS[${i}]}
           ;;
+        --root-ca-subject)
+          i=$((i+1)); ROOT_SUBJECT=${ARGS[${i}]}
+          ;;
         --signing-ca)
           i=$((i+1)); SIGNING_CA_NAME=${ARGS[${i}]}
           ;;
         --signing-ca-password)
           i=$((i+1)); SIGNING_PW=${ARGS[${i}]}
           ;;
+        --signing-ca-subject)
+          i=$((i+1)); SIGNING_SUBJECT=${ARGS[${i}]}
+          ;;
         --days)
           i=$((i+1)); DAYS=${ARGS[${i}]}
+          ;;
+        --server-ca-subject)
+          i=$((i+1)); SERVER_SUBJECT=${ARGS[${i}]}
           ;;
         *)
           echo "ERROR: unknown parameter \"${PARAM}\""
@@ -92,25 +113,28 @@ function process_args
       i=$((i+1))
     done
 
-  else
+  # else
+  #
+  #   usage
+  #   exit 0
+  #
+  # fi
 
-    usage
-    exit 0
-
-  fi
-
-  check_mandatory_arg "${ROOT_CA_NAME}"     "--root-ca"
-  check_mandatory_arg "${ROOT_PW}"          "--root-ca-password"
-  check_mandatory_arg "${SIGNING_CA_NAME}"  "--signing-ca"
-  check_mandatory_arg "${SIGNING_PW}"       "--signing-ca-password"
-  check_mandatory_arg "${DAYS}"             "--days"
-
-  # By exiting here, it will show all error messages, rather than one at a time.
-  if [ "${MISSING_ARG}" ]
-  then
-    usage
-    exit 1
-  fi
+  # check_mandatory_arg "${ROOT_CA_NAME}"     "--root-ca"
+  # check_mandatory_arg "${ROOT_PW}"          "--root-ca-password"
+  # check_mandatory_arg "${ROOT_SUBJECT}"     "--root-ca-subject"
+  # check_mandatory_arg "${SIGNING_CA_NAME}"  "--signing-ca"
+  # check_mandatory_arg "${SIGNING_PW}"       "--signing-ca-password"
+  # check_mandatory_arg "${SIGNING_SUBJECT}"  "--signing-ca-subject"
+  # check_mandatory_arg "${DAYS}"             "--days"
+  # check_mandatory_arg "${SERVER_SUBJECT}"   "--server-ca-subject"
+  #
+  # # By exiting here, it will show all error messages, rather than one at a time.
+  # if [ "${MISSING_ARG}" ]
+  # then
+  #   usage
+  #   exit 1
+  # fi
 
 }
 
@@ -154,7 +178,7 @@ function print_crl()
   openssl crl -text -noout -in ${CRL}
 }
 
-# $1 is the path and filename of the ca cert. e.g. private/rootca.cert.pem
+# $1 is the path and filename of the ca cert or chain bundle. e.g. private/rootca.cert.pem
 # $2 is the path and filename of the server cert. e.g. certs/example.com.cert.pem
 function verify_chain_of_trust()
 {
@@ -183,29 +207,39 @@ function create_root_ca()
   mkdir -p ca/${ROOT_CA}/private ca/${ROOT_CA}/db crl certs
   # chmod 700 ca/${ROOT_CA}/private
 
-  # Create database"
-  cp /dev/null ca/${ROOT_CA}/db/${ROOT_CA}.db
-  cp /dev/null ca/${ROOT_CA}/db/${ROOT_CA}.db.attr
-  echo 01 > ca/${ROOT_CA}/db/${ROOT_CA}.crt.srl
-  echo 01 > ca/${ROOT_CA}/db/${ROOT_CA}.crl.srl
+  # Create database, if it doesn't exist
+  if [ ! -f ca/${ROOT_CA}/db/${ROOT_CA}.db ]; then
+    cp /dev/null ca/${ROOT_CA}/db/${ROOT_CA}.db
+    cp /dev/null ca/${ROOT_CA}/db/${ROOT_CA}.db.attr
+    echo 01 > ca/${ROOT_CA}/db/${ROOT_CA}.crt.srl
+    echo 01 > ca/${ROOT_CA}/db/${ROOT_CA}.crl.srl
+  fi
 
   echo ""
   echo "------------------------------------------------------------------------------"
-  echo "Root CA: Generating key and creating request: ${ROOT_CSR}"
+  echo "Root CA: Creating the keypair: ${ROOT_KEY}"
+  echo "------------------------------------------------------------------------------"
+  openssl genrsa -aes256 -passout pass:${ROOT_PW} -out ${ROOT_KEY} 4096
+
+  if (( $? )); then echo -e "\nSomething went wrong, exiting" >&2; exit 1; fi
+
+  echo ""
+  echo "------------------------------------------------------------------------------"
+  echo "Root CA: Creating the signing request: ${ROOT_CSR}"
   echo "------------------------------------------------------------------------------"
   openssl req -new \
       -config ../conf/root-ca.conf \
-      -keyout ${ROOT_KEY} \
-      -passout pass:${ROOT_PW} \
+      -key ${ROOT_KEY} -passin pass:${ROOT_PW} \
+      -subj "${ROOT_SUBJECT}" \
       -out ${ROOT_CSR}
 
   if (( $? )); then echo -e "\nSomething went wrong, exiting" >&2; exit 1; fi
 
   echo ""
   echo "------------------------------------------------------------------------------"
-  echo "Root CA: Creating certificate: ${ROOT_CERT}"
+  echo "Root CA: Creating the certificate (CSR self-signed): ${ROOT_CERT}"
   echo "------------------------------------------------------------------------------"
-  openssl ca -selfsign \
+  openssl ca  -selfsign \
       -config ../conf/root-ca.conf \
       -extensions root_ca_ext \
       -days ${DAYS}  \
@@ -232,7 +266,7 @@ function create_root_ca()
 
   echo ""
   echo "------------------------------------------------------------------------------"
-  echo "Root CA: Creating DER certificate for publishing: ${ROOT_CRL}"
+  echo "Root CA: Creating DER certificate for publishing: ${ROOT_DER}"
   echo "------------------------------------------------------------------------------"
   # All published certificates must be in DER format. MIME type: application/pkix-cert. [RFC 2585#section-4.1]
   openssl x509 \
@@ -263,26 +297,37 @@ function create_signing_ca()
   # chmod 700 ca/${SIGNING_CA}/private
 
   # Create database"
-  cp /dev/null ca/${SIGNING_CA}/db/${SIGNING_CA}.db
-  cp /dev/null ca/${SIGNING_CA}/db/${SIGNING_CA}.db.attr
-  echo 01 > ca/${SIGNING_CA}/db/${SIGNING_CA}.crt.srl
-  echo 01 > ca/${SIGNING_CA}/db/${SIGNING_CA}.crl.srl
+  if [ ! -f ca/${SIGNING_CA}/db/${SIGNING_CA}.db ]; then
+    cp /dev/null ca/${SIGNING_CA}/db/${SIGNING_CA}.db
+    cp /dev/null ca/${SIGNING_CA}/db/${SIGNING_CA}.db.attr
+    echo 01 > ca/${SIGNING_CA}/db/${SIGNING_CA}.crt.srl
+    echo 01 > ca/${SIGNING_CA}/db/${SIGNING_CA}.crl.srl
+  fi
 
   echo ""
   echo "------------------------------------------------------------------------------"
-  echo "Signing CA: Generating key and creating request: ${SIGNING_CSR}"
+  echo "Signing CA: Creating the keypair: ${SIGNING_KEY}"
   echo "------------------------------------------------------------------------------"
+  openssl genrsa -aes256 -passout pass:${SIGNING_PW} -out ${SIGNING_KEY} 4096
+
+  if (( $? )); then echo -e "\nSomething went wrong, exiting" >&2; exit 1; fi
+
+  echo ""
+  echo "------------------------------------------------------------------------------"
+  echo "Signing CA: Creating the signing request: ${SIGNING_CSR}"
+  echo "------------------------------------------------------------------------------"
+  # TODO: Make -subj into a variable
   openssl req -new \
       -config ../conf/signing-ca.conf \
-      -keyout ${SIGNING_KEY} \
-      -passout pass:${SIGNING_PW} \
+      -key ${SIGNING_KEY} -passin pass:${SIGNING_PW} \
+      -subj "${SIGNING_SUBJECT}" \
       -out ${SIGNING_CSR}
 
   if (( $? )); then echo -e "\nSomething went wrong, exiting" >&2; exit 1; fi
 
   echo ""
   echo "------------------------------------------------------------------------------"
-  echo "Signing CA: Signing CSR with root CA: ${SIGNING_CERT}"
+  echo "Signing CA: Creating the certificate (CSR signed with root CA): ${SIGNING_CERT}"
   echo "------------------------------------------------------------------------------"
   openssl ca \
       -config ../conf/root-ca.conf \
@@ -317,39 +362,37 @@ function create_signing_ca()
 
 }
 
-function create_examplecom_cert()
+function create_server_cert()
 {
 
   echo ""
   echo "------------------------------------------------------------------------------"
-  echo "example.com cert: Creating certificate signing request: ${SIGNING_CHAIN}"
+  echo "Server cert: Creating certificate signing request: ${SERVER_CSR}"
   echo "------------------------------------------------------------------------------"
-  export SAN="DNS:${EXAMPLECOM_SUBDOMAIN}.com,DNS:*.${EXAMPLECOM_SUBDOMAIN}.com,DNS:${EXAMPLECOM_SUBDOMAIN}.net,DNS:*.${EXAMPLECOM_SUBDOMAIN}.net,DNS:${EXAMPLECOM_SUBDOMAIN}.org,DNS:*.${EXAMPLECOM_SUBDOMAIN}.org"
+  export SAN="DNS:${SERVER_HOSTNAME},DNS:*.${SERVER_HOSTNAME},DNS:example.net,DNS:*.example.net,DNS:example.org,DNS:*.example.org"
   openssl req -new \
       -config ../conf/server.conf \
-      -out ${EXAMPLECOM_CSR} \
-      -keyout ${EXAMPLECOM_KEY} \
-      -subj "/C=US/ST=California/O=Kaazing/OU=Kaazing Demo/CN=*.${EXAMPLECOM_SUBDOMAIN}.com"
+      -keyout ${SERVER_KEY} \
+      -subj "${SERVER_SUBJECT}" \
+      -out ${SERVER_CSR}
 
   if (( $? )); then echo -e "\nSomething went wrong, exiting" >&2; exit 1; fi
 
   echo ""
   echo "------------------------------------------------------------------------------"
-  echo "example.com cert: Signing CSR with signing CA: ${SIGNING_CERT}"
+  echo "Server cert: Creating server certificate (CSR signed with signing CA): ${SERVER_CERT}"
   echo "------------------------------------------------------------------------------"
   openssl ca \
       -config ../conf/signing-ca.conf \
       -extensions server_ext \
       -days ${DAYS}  \
       -passin pass:${SIGNING_PW} -batch \
-      -in ${EXAMPLECOM_CSR} \
-      -out ${EXAMPLECOM_CERT}
+      -in ${SERVER_CSR} \
+      -out ${SERVER_CERT}
 
   if (( $? )); then echo -e "\nSomething went wrong, exiting" >&2; exit 1; fi
 
-  # print_cert ${EXAMPLECOM_CERT}
-
-  verify_chain_of_trust ${SIGNING_CHAIN} ${EXAMPLECOM_CERT}
+  # print_cert ${SERVER_CERT}
 
 }
 
@@ -362,7 +405,7 @@ function main()
 
   create_root_ca ${ROOT_CA_NAME}
   create_signing_ca ${SIGNING_CA_NAME}
-  create_examplecom_cert
+  create_server_cert
 
   echo ""
   echo "Done."
