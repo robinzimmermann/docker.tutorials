@@ -36,7 +36,7 @@ function usage()
   echo "    --days                 Number of days the CAs are valid for"
   echo "    --server-cert-subject  The subject DN of the server certificate"
   echo ""
-  echo "  Example:"
+  echo "  Example (showing default values):"
   echo ""
   echo "    --root-ca              root-ca"
   echo "    --root-ca-password     rootpass"
@@ -343,7 +343,7 @@ function create_signing_ca()
 
   echo ""
   echo "------------------------------------------------------------------------------"
-  echo "Signing CA: Creating initial CRL: ${SIGNING_CRL}"
+  echo "Signing CA: Creating the initial CRL: ${SIGNING_CRL}"
   echo "------------------------------------------------------------------------------"
   openssl ca -gencrl \
       -config ../conf/signing-ca.conf \
@@ -356,7 +356,7 @@ function create_signing_ca()
 
   echo ""
   echo "------------------------------------------------------------------------------"
-  echo "Signing CA: Create certificate chain: ${SIGNING_CHAIN}"
+  echo "Signing CA: Create the certificate chain: ${SIGNING_CHAIN}"
   echo "------------------------------------------------------------------------------"
   cat ${SIGNING_CERT} ${ROOT_CERT} > ${SIGNING_CHAIN}
 
@@ -367,7 +367,7 @@ function create_server_cert()
 
   echo ""
   echo "------------------------------------------------------------------------------"
-  echo "Server cert: Creating certificate signing request: ${SERVER_CSR}"
+  echo "Server cert: Creating the certificate signing request: ${SERVER_CSR}"
   echo "------------------------------------------------------------------------------"
   export SAN="DNS:${SERVER_HOSTNAME},DNS:*.${SERVER_HOSTNAME},DNS:example.net,DNS:*.example.net,DNS:example.org,DNS:*.example.org"
   openssl req -new \
@@ -380,7 +380,7 @@ function create_server_cert()
 
   echo ""
   echo "------------------------------------------------------------------------------"
-  echo "Server cert: Creating server certificate (CSR signed with signing CA): ${SERVER_CERT}"
+  echo "Server cert: Creating the certificate (CSR signed with signing CA): ${SERVER_CERT}"
   echo "------------------------------------------------------------------------------"
   openssl ca \
       -config ../conf/signing-ca.conf \
