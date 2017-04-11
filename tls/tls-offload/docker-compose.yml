@@ -2,25 +2,12 @@ version: '2'
 
 services:
 
-  tcpdump:
-    image: corfr/tcpdump
-    network_mode: "host"
-    volumes:
-      - ./tcpdump:/data
-    command: ["-i", "any", "-w", "/data/dump.pcap"]
-
   certs:
-
     build: https://github.com/robinzimmermann/docker.tutorials.git#certs:tls/cert-generator
+    # image: cert-generator:server
     volumes:
       - myx509:/x509
-    command: [
-        "server",
-        "--root-ca",             "root-ca",
-        "--root-ca-password",    "rootpass",
-        "--signing-ca",          "signing-ca",
-        "--signing-ca-password", "signingpass",
-        "--days",                "1"]
+    command: ["server"]
 
   gateway1.example.net:
     image: kaazing/enterprise-gateway:latest
@@ -49,11 +36,13 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./utils/wait-for-files.sh:/wait-for-files.sh
       - myx509:/x509:ro
+      # - /Users/Robin/work/git/robin/docker.tutorials/tls/cert-generator/x509:/x509:ro
     networks:
       mynet:
     command: bash -c "/wait-for-files.sh
                          /x509/certs/example.com.crt
                          /x509/certs/example.com.key
+                      && sleep 1
                       && nginx -g 'daemon off;'"
 
 volumes:
