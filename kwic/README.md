@@ -1,5 +1,9 @@
-# KWIC (Kaazing WebSocket Intercloud Connect)
+### Directories only ###
 
-KWIC Scenarios:
+[README 1](..)
+[README 3](kwic-ha)
 
-* [KWIC High Availability (HA)](kwic-ha)
+### Files specifically ###
+
+[README 1](../README.md)
+[README 3](kwic-ha/README.md)
