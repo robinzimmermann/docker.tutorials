@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<gateway-config xmlns="http://xmlns.kaazing.org/2016/06/gateway">
+
+
+ <!--  <properties>
+
+    <property>
+      <name>service-a-hostname</name>
+      <value>a</value>
+    </property>
+
+    <property>
+      <name>service-a-port</name>
+      <value>5551</value>
+    </property>
+
+    <property>
+      <name>service-b-hostname</name>
+      <value>b</value>
+    </property>
+
+    <property>
+      <name>service-b-port</name>
+      <value>6661</value>
+    </property>
+
+    <property>
+      <name>cloud-hostname</name>
+      <value>cloud.example.com</value>
+    </property>
+
+    <property>
+      <name>cloud-port</name>
+      <value>443</value>
+    </property>
+ -->
+    <!--
+    The following properties are specific to each gateway instance, and will be set
+    by the external environment.
+
+    <property>
+      <name>cloud-node-hostname</name>
+      <value></value>
+    </property>
+
+    <property>
+      <name>other-cluster-member-ip</name>
+      <value></value>
+    </property>
+    -->
+
+  <!-- </properties> -->
+
+
+  <service>
+    <name>DMZ Echo Proxy</name>
+    <accept>ws://example.com:80/echo</accept>
+    <connect>tcp://echo.example.net:9000</connect>
+
+    <type>proxy</type>
+
+    <accept-options>
+      <!-- TODO: Add inactivity timeout -->
+      <http.transport>tcp://internal.example.net:80</http.transport>
+<!-- 
+      <pipe.transport>socks://${service-a-hostname}</pipe.transport>
+      <socks.mode>reverse</socks.mode>
+      <socks.transport>wsn://dmz.example.net:1080/enterprise-shield</socks.transport>
+ -->
+    </accept-options>
+
+    <!-- TODO: Probably can remove -->
+    <cross-site-constraint>
+      <allow-origin>*</allow-origin>
+    </cross-site-constraint>
+
+  </service>
+
+
+</gateway-config>

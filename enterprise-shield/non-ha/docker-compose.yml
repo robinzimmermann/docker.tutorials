@@ -1,0 +1,48 @@
+version: '2'
+
+services:
+
+  tcpdump:
+    image: corfr/tcpdump
+    network_mode: "host"
+    volumes:
+      - ./tcpdump:/data
+    command: ["-i", "any", "-w", "/data/dump.pcap"]
+
+  example.com:
+    image: kaazing/enterprise-gateway:5.6.0
+    volumes:
+      - ./gateway/dmz-gateway-config.xml:/kaazing-gateway/conf/gateway-config.xml:ro
+      - ./gateway/log4j-config.xml:/kaazing-gateway/conf/log4j-config.xml:ro
+    networks:
+      es:
+        aliases:
+         - dmz.example.net
+    ports:
+      - "80:80"
+
+  internal.example.net:
+    image: kaazing/enterprise-gateway:5.6.0
+    volumes:
+      - ./gateway/internal-gateway-config.xml:/kaazing-gateway/conf/gateway-config.xml:ro
+      - ./gateway/log4j-config.xml:/kaazing-gateway/conf/log4j-config.xml:ro
+    networks:
+      es:
+
+  echo.example.net:
+    image: kaazing/enterprise-gateway:5.6.0
+    volumes:
+      - ./gateway/echo-gateway-config.xml:/kaazing-gateway/conf/gateway-config.xml:ro
+      - ./gateway/log4j-config.xml:/kaazing-gateway/conf/log4j-config.xml:ro
+    networks:
+      es:
+    environment:
+      GATEWAY_OPTS: "-Dservice-hostname=a -Dservice-port=5551"
+
+networks:
+  es:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.33.0.0/16
+          gateway: 172.33.0.1

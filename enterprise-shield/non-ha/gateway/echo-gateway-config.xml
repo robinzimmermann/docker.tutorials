@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<gateway-config xmlns="http://xmlns.kaazing.org/2016/06/gateway">
+
+
+  <service>
+    <name>TCP Echo</name>
+    <description>A service that echo's messages back for tcp</description>
+
+    <accept>tcp://echo.example.net:9000</accept>
+
+    <type>echo</type>
+
+    <cross-site-constraint>
+      <allow-origin>*</allow-origin>
+    </cross-site-constraint>
+
+  </service>
+
+
+</gateway-config>
